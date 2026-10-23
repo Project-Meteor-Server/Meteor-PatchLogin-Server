@@ -10,6 +10,8 @@
     <!-- Pomelo 9 is the newest version. Its EF Core 9 runs fine on .NET 10. -->
     <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0" />
     <PackageReference Include="NLog" Version="6.2.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="10.0.10" />
   </ItemGroup>
 
   <ItemGroup>

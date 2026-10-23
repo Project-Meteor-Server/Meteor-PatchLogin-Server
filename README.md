@@ -32,6 +32,19 @@ Settings are in `web_config.ini` in that folder. Set `[Database]` to the game se
 | 80 | Login and sign-up pages |
 | 54997, 54998 | Patch downloads (only when patches are set up) |
 
+## Run as a service
+
+These build the server, copy it to a system folder, and start it at boot. Run them again to update.
+Your `web_config.ini` is kept. Add `uninstall` to remove the service.
+
+| System | Command | Installs to |
+|---|---|---|
+| Linux (systemd) | `sudo ./service/install-linux.sh` | `/opt/meteor-web` |
+| macOS | `sudo ./service/install-macos.sh` | `/usr/local/meteor-web` |
+| Windows (admin PowerShell) | `.\service\install-windows.ps1` | `C:\Program Files\MeteorWeb` |
+
+After the first install, set `[Database]` in the installed `web_config.ini` and restart the service.
+
 ## Login page images
 
 The images aren't in this repo. Put them in `WebServer/wwwroot/account/content/img/`:

@@ -31,6 +31,7 @@ using Meteor.Web.Data;
 using Meteor.Web.Patching;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Logging;
 using NLog;
@@ -44,6 +45,9 @@ namespace Meteor.Web
 
         static void Main(string[] args)
         {
+            // Services start in a system folder. Config, logs and patch paths are relative to ours.
+            Directory.SetCurrentDirectory(AppContext.BaseDirectory);
+
             Log = LogManager.GetCurrentClassLogger();
             Log.Info("==================================");
             Log.Info("Project Meteor: Web Server");
@@ -60,7 +64,13 @@ namespace Meteor.Web
             int patchPort = ConfigConstants.OPTIONS_PATCH_PORT;
             int loginPort = ConfigConstants.OPTIONS_LOGIN_PORT;
 
-            WebApplicationBuilder builder = WebApplication.CreateBuilder();
+            WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions
+            {
+                ContentRootPath = AppContext.BaseDirectory,
+            });
+            // Lets it run as a Windows service or a systemd service. Both do nothing otherwise.
+            builder.Host.UseWindowsService(options => options.ServiceName = "MeteorWeb");
+            builder.Host.UseSystemd();
             builder.Logging.ClearProviders();
             builder.WebHost.ConfigureKestrel(options =>
             {
