@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Makes the patch-signing key and certificate, and signs torrents. RetailRedirect gives the
+       certificate to ffxivboot. Run it from the repo root with dotnet run, project Tools/PatchTool. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Meteor.Tools.PatchTool</RootNamespace>
+    <AssemblyName>PatchTool</AssemblyName>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Shares the signing code with the web server, which signs at startup. -->
+    <Compile Include="..\..\WebServer\Patching\PatchSignature.cs" Link="PatchSignature.cs" />
+  </ItemGroup>
+</Project>

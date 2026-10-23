@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/Tools/">
+    <Project Path="Tools/PatchTool/PatchTool.csproj" />
+  </Folder>
+  <Project Path="WebServer/WebServer.csproj" />
+</Solution>

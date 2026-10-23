@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Meteor.Web</RootNamespace>
+    <AssemblyName>WebServer</AssemblyName>
+    <Product>Project Meteor Web Server</Product>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Pomelo 9 is the newest version. Its EF Core 9 runs fine on .NET 10. -->
+    <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0" />
+    <PackageReference Include="NLog" Version="6.2.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The server reads these from its own folder. -->
+    <Content Update="NLog.config" CopyToOutputDirectory="PreserveNewest" />
+    <Content Update="wwwroot\**" CopyToOutputDirectory="PreserveNewest" />
+    <Content Update="web_patches.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Remove="web_config.ini" />
+    <None Include="web_config.ini" />
+  </ItemGroup>
+
+  <!-- Copy the config only if none is there yet, so a build never overwrites your real password. -->
+  <Target Name="CopyConfigIfMissing" AfterTargets="Build">
+    <Copy SourceFiles="web_config.ini" DestinationFolder="$(OutDir)" Condition="!Exists('$(OutDir)web_config.ini')" />
+  </Target>
+</Project>

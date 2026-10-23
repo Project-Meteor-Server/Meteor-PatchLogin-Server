@@ -1,0 +1,19 @@
+[Bb]in/
+[Oo]bj/
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+.DS_Store
+
+# RetailRedirect build output
+Tools/RetailRedirect/build/
+
+# Patch signing keys and certificates made by PatchTool
+*.key
+*.pem
+*.der
+
+# Login page images: Square Enix artwork, never committed. See README.
+WebServer/wwwroot/

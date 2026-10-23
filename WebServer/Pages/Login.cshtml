@@ -1,0 +1,48 @@
+@page "/account/content/ffxivlogin"
+@model LoginModel
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<style>
+html, body { font-family: Arial; font-size: 14px; margin: 0; padding: 0; width: 600px; }
+html { padding: 10px; }
+form { background-color: #eee; border: solid 1px #888; border-radius: 8px; margin-bottom: 0; }
+table { width: 100%; height: 100%; padding: 20px; }
+form input { width: 100%; height: 30px; box-sizing: border-box; border: solid 1px #888; border-radius: 8px; padding: 0 8px; background: #fff; font-size: 14px; outline: none; }
+form input:focus { border-color: #444; }
+form button { background-image: url(img/btLogin.gif); background-position: 0 0; background-repeat: no-repeat; border: none; width: 200px; height: 40px; }
+form button:hover { background-position: 0 -40px; cursor: pointer; }
+.errorText { color: red; margin: 2px 0; }
+.banner { margin-top: 10px; }
+</style>
+</head>
+<body>
+@if (Model.SessionId != null)
+{
+    <x-sqexauth sid="@Model.SessionId" lang="@Model.Language" region="2" utc="@Model.Utc"></x-sqexauth>
+}
+<table border="0" cellpadding="0" cellspacing="0">
+<tr>
+	<td width="50%"><img src="img/logo.png" class="logo" width="300"></td>
+	<td width="50%">
+		<form method="post">
+		<table border="0" cellpadding="5" cellspacing="0">
+		<tr>
+			<td width="5%"><img src="img/lbSQEXId_mem.gif"></td>
+			<td width="40%"><label for="username">Username</label></td>
+			<td width="50%"><input id="username" name="username" autocomplete="off" type="text" value="@Model.Username"></td>
+		</tr>
+		<tr>
+			<td><img src="img/lbSQEXPass_mem.gif"></td>
+			<td><label for="password">Password</label></td>
+			<td><input id="password" name="password" autocomplete="off" type="password"></td>
+		</tr>
+		<tr><td colspan="3" align="center"><p class="errorText">@Model.Error</p></td></tr>
+		<tr><td colspan="3" align="center"><button type="submit" name="login">&nbsp;</button></td></tr>
+		<tr><td colspan="3" align="center"><a href="signup">Don't have an account?</a></td></tr>
+		</table>
+		</form>
+	</td>
+</tr>
+<tr><td colspan="2" align="center"><img src="img/banner.png" class="banner" width="720"></td></tr>
+</table>
+</body></html>

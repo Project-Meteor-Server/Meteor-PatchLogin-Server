@@ -1,0 +1,48 @@
+@page "/account/content/signup"
+@model SignupModel
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<title>Create Account</title>
+<style>
+body { font-family: Arial; font-size: 14px; margin: 0; padding: 20px; }
+.box { width: 420px; margin: 0 auto; text-align: center; }
+form, .done { background-color: #eee; border: solid 1px #888; border-radius: 8px; padding: 15px; }
+table { width: 100%; }
+td { padding: 4px; text-align: left; }
+td.icon { width: 28px; padding-right: 0; }
+input[type=text], input[type=password] { width: 100%; height: 30px; box-sizing: border-box; border: solid 1px #888; border-radius: 8px; padding: 0 8px; background: #fff; font-size: 14px; outline: none; }
+input[type=text]:focus, input[type=password]:focus { border-color: #444; }
+.errorText { color: red; margin: 10px 0 8px; }
+form button { background-image: url(img/btSignup.gif); background-position: 0 0; background-repeat: no-repeat; border: none; width: 200px; height: 40px; }
+form button:hover { background-position: 0 -40px; cursor: pointer; }
+a.login { display: inline-block; background-image: url(img/btLogin.gif); background-position: 0 0; background-repeat: no-repeat; width: 200px; height: 40px; }
+a.login:hover { background-position: 0 -40px; }
+</style>
+</head>
+<body>
+<div class="box">
+<p><img src="img/logo.png" width="200"></p>
+@if (Model.Created)
+{
+    <div class="done">
+    <p>Account <b>@Model.Username</b> created.</p>
+    <p><a class="login" href="ffxivlogin" title="Log In"></a></p>
+    </div>
+}
+else
+{
+    <form method="post" autocomplete="off">
+    <table>
+    <tr><td class="icon"><img src="img/lbSQEXId_mem.gif"></td><td><label for="username">Username</label></td><td><input id="username" type="text" name="username" maxlength="@Meteor.Web.Data.User.MaxNameLength" value="@Model.Username"></td></tr>
+    <tr><td class="icon"><img src="img/lbSQEXPass_mem.gif"></td><td><label for="password">Password</label></td><td><input id="password" type="password" name="password"></td></tr>
+    <tr><td class="icon"><img src="img/lbSQEXPass_mem.gif"></td><td><label for="repeatPassword">Repeat Password</label></td><td><input id="repeatPassword" type="password" name="repeatPassword"></td></tr>
+    <tr><td class="icon"><img src="img/lbMail.gif"></td><td><label for="email">E-mail Address</label></td><td><input id="email" type="text" name="email" maxlength="@Meteor.Web.Data.User.MaxEmailLength" value="@Model.Email"></td></tr>
+    </table>
+    <p class="errorText">@Model.Error</p>
+    <button type="submit" name="createUser">&nbsp;</button>
+    </form>
+    <p><a href="ffxivlogin">Back to login</a></p>
+}
+</div>
+</body></html>
