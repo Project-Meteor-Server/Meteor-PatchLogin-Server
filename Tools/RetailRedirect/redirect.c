@@ -11,13 +11,14 @@
 //  - every loaded module's list of imported functions, at start and on each DLL load. This catches
 //    modules that found ws2_32 before we hooked it.
 //
-// In ffxivboot it can also swap boot's patch-signing certificate for the one set by cert=, so an
-// unmodified retail boot accepts our signed patches.
+// In ffxivboot it also swaps boot's patch-signing certificate for the server's (downloaded from the
+// server, or the file set by cert=), so an unmodified retail boot accepts our signed patches.
 
 #define _WIN32_WINNT 0x0601
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <windows.h>
+#include <winhttp.h>
 
 #include "redirect.h"
 
@@ -344,26 +345,42 @@ static LoadResource_t   Real_LoadResource;
 static SizeofResource_t Real_SizeofResource;
 static LockResource_t   Real_LockResource;
 
-static wchar_t g_certPath[MAX_PATH];
+static wchar_t g_certPath[MAX_PATH];  // cert=, or where the downloaded one is kept
+static BOOL    g_certDownload;          // cert= empty: fetch it from the server (DownloadCertificate)
+static BOOL    g_certTried;
+static INTERNET_PORT g_certPort;       // the server's patch port, which serves /patch/cert
 static BYTE*   g_cert;
 static DWORD   g_certSize;
 static HMODULE g_exe;
 static BYTE    g_certHandle;    // its address is the handle we give out for our certificate
 
+static BOOL ReadCertificate(void);
+static BOOL DownloadCertificate(void);
+
 static BOOL IsCertLookup(HMODULE module, LPCWSTR name, LPCWSTR type)
 {
-    if (g_cert == NULL || (module != g_exe && module != NULL))
+    if (module != g_exe && module != NULL)
         return FALSE;
     if (!IS_INTRESOURCE(name) || (ULONG_PTR)name != CERT_RESOURCE_ID || IS_INTRESOURCE(type))
         return FALSE;
-    return CompareStringW(LOCALE_INVARIANT, NORM_IGNORECASE, type, -1, L"BINARY", -1) == CSTR_EQUAL;
+    if (CompareStringW(LOCALE_INVARIANT, NORM_IGNORECASE, type, -1, L"BINARY", -1) != CSTR_EQUAL)
+        return FALSE;
+    // Downloaded here, the first time boot asks, not when the DLL loads: no network calls under the
+    // loader lock. If the server can't be reached, the copy from last time stands in.
+    if (g_cert == NULL && g_certDownload && !g_certTried)
+    {
+        g_certTried = TRUE;
+        if (!DownloadCertificate() && ReadCertificate())
+            Log("cert: the server sent none; using the copy from last time");
+    }
+    return g_cert != NULL;
 }
 
 static HRSRC WINAPI Hook_FindResourceW(HMODULE module, LPCWSTR name, LPCWSTR type)
 {
     if (!IsCertLookup(module, name, type))
         return Real_FindResourceW(module, name, type);
-    Log("FindResourceW: BINARY %d -> %u-byte certificate from cert=", CERT_RESOURCE_ID, g_certSize);
+    Log("FindResourceW: BINARY %d -> the server's %u-byte certificate", CERT_RESOURCE_ID, g_certSize);
     return (HRSRC)&g_certHandle;
 }
 
@@ -424,13 +441,82 @@ static BOOL ReadCertificate(void)
     return TRUE;
 }
 
+// GET http://<server>:<patch port>/patch/cert (meteor-web serves it), kept at g_certPath. WinHTTP is
+// loaded here rather than imported: this DLL links nothing but kernel32 and user32.
+typedef HINTERNET (WINAPI *WinHttpOpen_t)(LPCWSTR, DWORD, LPCWSTR, LPCWSTR, DWORD);
+typedef HINTERNET (WINAPI *WinHttpConnect_t)(HINTERNET, LPCWSTR, INTERNET_PORT, DWORD);
+typedef HINTERNET (WINAPI *WinHttpOpenRequest_t)(HINTERNET, LPCWSTR, LPCWSTR, LPCWSTR, LPCWSTR, LPCWSTR*, DWORD);
+typedef BOOL (WINAPI *WinHttpSendRequest_t)(HINTERNET, LPCWSTR, DWORD, LPVOID, DWORD, DWORD, DWORD_PTR);
+typedef BOOL (WINAPI *WinHttpReceiveResponse_t)(HINTERNET, LPVOID);
+typedef BOOL (WINAPI *WinHttpQueryHeaders_t)(HINTERNET, DWORD, LPCWSTR, LPVOID, LPDWORD, LPDWORD);
+typedef BOOL (WINAPI *WinHttpReadData_t)(HINTERNET, LPVOID, DWORD, LPDWORD);
+typedef BOOL (WINAPI *WinHttpCloseHandle_t)(HINTERNET);
+
+static BOOL DownloadCertificate(void)
+{
+    HMODULE winhttp = LoadLibraryW(L"winhttp.dll");
+    if (winhttp == NULL)
+        return FALSE;
+#define WINHTTP(name) name##_t name = (name##_t)GetProcAddress(winhttp, #name)
+    WINHTTP(WinHttpOpen);
+    WINHTTP(WinHttpConnect);
+    WINHTTP(WinHttpOpenRequest);
+    WINHTTP(WinHttpSendRequest);
+    WINHTTP(WinHttpReceiveResponse);
+    WINHTTP(WinHttpQueryHeaders);
+    WINHTTP(WinHttpReadData);
+    WINHTTP(WinHttpCloseHandle);
+#undef WINHTTP
+    if (!WinHttpOpen || !WinHttpConnect || !WinHttpOpenRequest || !WinHttpSendRequest || !WinHttpReceiveResponse
+        || !WinHttpQueryHeaders || !WinHttpReadData || !WinHttpCloseHandle)
+        return FALSE;
+
+    BYTE* data = (BYTE*)HeapAlloc(GetProcessHeap(), 0, 64 * 1024);
+    DWORD size = 0, status = 0, statusLen = sizeof(status);
+    HINTERNET session = WinHttpOpen(L"RetailRedirect", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, NULL, NULL, 0);
+    HINTERNET connection = session ? WinHttpConnect(session, g_serverW, g_certPort, 0) : NULL;
+    HINTERNET request = connection ? WinHttpOpenRequest(connection, L"GET", L"/patch/cert", NULL, NULL, NULL, 0) : NULL;
+    BOOL ok = data != NULL && request != NULL && WinHttpSendRequest(request, NULL, 0, NULL, 0, 0, 0)
+              && WinHttpReceiveResponse(request, NULL)
+              && WinHttpQueryHeaders(request, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, NULL, &status,
+                                     &statusLen, NULL)
+              && status == 200;
+    for (DWORD got = 1; ok && got != 0 && size < 64 * 1024;)
+    {
+        ok = WinHttpReadData(request, data + size, 64 * 1024 - size, &got);
+        size += got;
+    }
+    if (request) WinHttpCloseHandle(request);
+    if (connection) WinHttpCloseHandle(connection);
+    if (session) WinHttpCloseHandle(session);
+    if (!ok || size == 0)
+    {
+        Log("cert: no certificate from http://%s:%u/patch/cert (status %u)", g_server, g_certPort, status);
+        if (data != NULL)
+            HeapFree(GetProcessHeap(), 0, data);
+        return FALSE;
+    }
+
+    HANDLE file = CreateFileW(g_certPath, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (file != INVALID_HANDLE_VALUE)
+    {
+        DWORD written;
+        WriteFile(file, data, size, &written, NULL);
+        CloseHandle(file);
+    }
+    g_cert = data;
+    g_certSize = size;
+    Log("cert: %u bytes from http://%s:%u/patch/cert", size, g_server, g_certPort);
+    return TRUE;
+}
+
 // Points boot's imports of the four resource functions at our hooks. Found by name, so this works
 // on every boot version.
 static void HookBootResources(void)
 {
     char pathA[MAX_PATH];
     WideCharToMultiByte(CP_ACP, 0, g_certPath, -1, pathA, sizeof(pathA), NULL, NULL);
-    if (!ReadCertificate())
+    if (!g_certDownload && !ReadCertificate())
     {
         Log("cert: can't read %s; boot keeps its own certificate", pathA);
         return;
@@ -466,8 +552,8 @@ static void HookBootResources(void)
             }
         }
     }
-    Log("cert: %s (%u bytes) stands in for BINARY %d; %d of %u imports hooked", pathA, g_certSize,
-        CERT_RESOURCE_ID, hooked, (unsigned)CERT_HOOK_COUNT);
+    Log("cert: %s stands in for BINARY %d; %d of %u imports hooked",
+        g_certDownload ? "the server's (fetched when boot asks)" : pathA, CERT_RESOURCE_ID, hooked, (unsigned)CERT_HOOK_COUNT);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -489,11 +575,19 @@ static void ReadConfig(HINSTANCE self)
     lstrcpyW(g_logPath, dir);
     lstrcatW(g_logPath, L"iphlpapi.log");
 
-    // cert= is relative to the DLL's folder unless it's a full path.
+    // cert= is relative to the DLL's folder unless it's a full path. Empty: downloaded from the
+    // server and kept as patch_cert.der here. off: boot keeps its own certificate.
     wchar_t cert[MAX_PATH];
     GetPrivateProfileStringW(L"Boot", L"cert", L"", cert, MAX_PATH, ini);
-    if (cert[0] == 0)
+    g_certPort = (INTERNET_PORT)GetPrivateProfileIntW(L"Boot", L"patch_port", 54996, ini);
+    g_certDownload = cert[0] == 0;
+    if (lstrcmpiW(cert, L"off") == 0)
         g_certPath[0] = 0;
+    else if (cert[0] == 0 && lstrlenW(dir) + 14 < MAX_PATH)
+    {
+        lstrcpyW(g_certPath, dir);
+        lstrcatW(g_certPath, L"patch_cert.der");
+    }
     else if (cert[0] == L'\\' || cert[0] == L'/' || (cert[0] != 0 && cert[1] == L':'))
         lstrcpynW(g_certPath, cert, MAX_PATH);
     else if (lstrlenW(dir) + lstrlenW(cert) < MAX_PATH)
@@ -545,7 +639,7 @@ void Redirect_Start(HINSTANCE self)
     Log("loaded into %s; server=%s, %d host(s)", exeA, g_server[0] ? g_server : "(none)", g_hostCount);
 
     // Windows has already linked boot's imports before this runs, so we can hook them now.
-    if (g_certPath[0] != 0 && IsBootProcess())
+    if (g_certPath[0] != 0 && (!g_certDownload || g_server[0] != 0) && IsBootProcess())
         HookBootResources();
 
     if (g_server[0] == 0)

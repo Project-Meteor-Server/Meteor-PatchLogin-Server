@@ -21,10 +21,14 @@ normally, and nothing outside the game's processes changes.
 Copy `iphlpapi.dll` and `iphlpapi.ini` next to `ffxivboot.exe`, set `server=` to the Meteor
 server's address, and start `ffxivboot.exe`.
 
-For patch downloads, also copy the server's `patch_cert.der` (from `Tools/PatchTool keygen`) next
-to them and set `cert=patch_cert.der` under `[Boot]`. Boot then checks the server's patch
-signatures against that certificate instead of Square Enix's, so `ffxivboot.exe` stays retail: the
-retail boot patch still applies to it, and the DLL does the same for the boot it installs.
+For patch downloads, boot must accept the server's patch signatures. With `cert=` left empty under
+`[Boot]`, the DLL downloads the server's certificate from `http://<server>:54996/patch/cert`
+(meteor-web serves it; `patch_port=` if yours differs) the first time boot asks for its own, and
+keeps a copy as `patch_cert.der` next to the DLL for when the server can't be reached. Boot then
+checks the server's signatures instead of Square Enix's, so `ffxivboot.exe` stays retail: the retail
+boot patch still applies to it, and the DLL does the same for the boot it installs. `cert=<file>`
+uses a certificate file instead (`patch_cert.der` from `Tools/PatchTool keygen`); `cert=off` leaves
+boot its own.
 
 ## Build
 
@@ -54,9 +58,11 @@ cmake --build build
   function. Hooks go into ws2_32's export table when ws2_32 loads, and into every module's import
   table at start and on each DLL load, so they reach the executables, WinHTTP (boot) and the
   WebBrowser control (login). No code is patched.
-  With `cert=` set, in `ffxivboot.exe` only, it also hooks boot's own imports of `FindResourceW`,
-  `LoadResource`, `SizeofResource` and `LockResource`: a lookup of `BINARY` resource 111 (the
-  patch-signing certificate) gets the `cert=` file, and every other resource passes through.
+  In `ffxivboot.exe` only, it also hooks boot's own imports of `FindResourceW`, `LoadResource`,
+  `SizeofResource` and `LockResource`: a lookup of `BINARY` resource 111 (the patch-signing
+  certificate) gets the server's certificate, and every other resource passes through. The download
+  happens in that first lookup, on boot's own thread, not while the DLL loads (no network calls
+  under the loader lock), through WinHTTP loaded by name.
 - `exports.h`, `iphlpapi.def`: the export list, from `gen_exports.py`. Regenerate it from a
   Windows install to pick up exports newer Windows versions add:
   `python gen_exports.py exports.h C:\Windows\SysWOW64\iphlpapi.dll` (inputs are merged, so
