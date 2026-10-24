@@ -39,6 +39,7 @@ namespace Meteor.Web
         public static String PATCH_INFO_URL;
         public static String PATCH_DIR;
         public static String PATCH_SIGNING_KEY;
+        public static String PATCH_SIGNING_CERT;
         public static int    TRACKER_PORT;
         public static int    TRACKER_INTERVAL;
         public static int    SEED_PORT;
@@ -74,6 +75,10 @@ namespace Meteor.Web
             ConfigConstants.PATCH_INFO_URL =        configIni.GetValue("Patch", "info_url", "http://www.example.com/");
             ConfigConstants.PATCH_DIR =             configIni.GetValue("Patch", "patch_dir", "");
             ConfigConstants.PATCH_SIGNING_KEY =     configIni.GetValue("Patch", "signing_key", "");
+            // PatchTool keygen writes the certificate beside the key
+            ConfigConstants.PATCH_SIGNING_CERT =    configIni.GetValue("Patch", "signing_cert",
+                ConfigConstants.PATCH_SIGNING_KEY.Length > 0
+                    ? Path.Combine(Path.GetDirectoryName(ConfigConstants.PATCH_SIGNING_KEY) ?? "", "patch_cert.der") : "");
             ConfigConstants.TRACKER_PORT =          int.Parse(configIni.GetValue("Patch", "tracker_port", "54997"));
             ConfigConstants.TRACKER_INTERVAL =      int.Parse(configIni.GetValue("Patch", "tracker_interval", "300"));
             ConfigConstants.SEED_PORT =             int.Parse(configIni.GetValue("Patch", "seed_port", "54998"));

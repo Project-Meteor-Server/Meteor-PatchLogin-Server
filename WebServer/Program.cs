@@ -129,6 +129,14 @@ namespace Meteor.Web
                     (HttpContext context, string repo, string version) => VersionCheck.Handle(context, repo, version))
                 .RequireHost("*:" + patchPort);
 
+            // The certificate players' ffxivboot checks the patch torrents' signatures against, for
+            // installers to fetch (it is public; the key stays here).
+            app.MapGet("/patch/cert", () =>
+                    File.Exists(ConfigConstants.PATCH_SIGNING_CERT)
+                        ? Results.File(File.ReadAllBytes(ConfigConstants.PATCH_SIGNING_CERT), "application/x-x509-ca-cert", "patch_cert.der")
+                        : Results.NotFound())
+                .RequireHost("*:" + patchPort);
+
             if (PatchStore.Enabled)
                 app.MapGet("/announce", Tracker.Announce).RequireHost("*:" + ConfigConstants.TRACKER_PORT);
 
