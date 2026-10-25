@@ -4,45 +4,49 @@
 <html><head>
 <meta charset="utf-8">
 <title>Create Account</title>
+<partial name="_LoginStyle" />
 <style>
-body { font-family: Arial; font-size: 14px; margin: 0; padding: 20px; }
-.box { width: 420px; margin: 0 auto; text-align: center; }
-form, .done { background-color: #eee; border: solid 1px #888; border-radius: 8px; padding: 15px; }
-table { width: 100%; }
-td { padding: 4px; text-align: left; }
-td.icon { width: 28px; padding-right: 0; }
-input[type=text], input[type=password] { width: 100%; height: 30px; box-sizing: border-box; border: solid 1px #888; border-radius: 8px; padding: 0 8px; background: #fff; font-size: 14px; outline: none; }
-input[type=text]:focus, input[type=password]:focus { border-color: #444; }
-.errorText { color: red; margin: 10px 0 8px; }
-form button { background-image: url(img/btSignup.gif); background-position: 0 0; background-repeat: no-repeat; border: none; width: 200px; height: 40px; }
-form button:hover { background-position: 0 -40px; cursor: pointer; }
-a.login { display: inline-block; background-image: url(img/btLogin.gif); background-position: 0 0; background-repeat: no-repeat; width: 200px; height: 40px; }
-a.login:hover { background-position: 0 -40px; }
+#panel .note { top: 146px; }
+#panel .button { top: 170px; }
+#panel .done { position: absolute; left: 17px; top: 60px; width: 364px; text-align: center; font-size: 14px; }
+#panel .back { position: absolute; left: 0; top: 236px; width: 100%; text-align: center; }
+#panel .back a { color: #af5f01; font-size: 14px; }
 </style>
 </head>
 <body>
-<div class="box">
-<p><img src="img/logo.png" width="200"></p>
+<div id="page">
+	<img id="logo" src="img/logo.png" width="325" height="175" alt="FINAL FANTASY XIV">
 @if (Model.Created)
 {
-    <div class="done">
-    <p>Account <b>@Model.Username</b> created.</p>
-    <p><a class="login" href="ffxivlogin" title="Log In"></a></p>
-    </div>
+	<div id="panel">
+		<p class="done">Account <b>@Model.Username</b> created.</p>
+		<a class="button" href="ffxivlogin">Log In</a>
+	</div>
 }
 else
 {
-    <form method="post" autocomplete="off">
-    <table>
-    <tr><td class="icon"><img src="img/lbSQEXId_mem.gif"></td><td><label for="username">Username</label></td><td><input id="username" type="text" name="username" maxlength="@Meteor.Web.Data.User.MaxNameLength" value="@Model.Username"></td></tr>
-    <tr><td class="icon"><img src="img/lbSQEXPass_mem.gif"></td><td><label for="password">Password</label></td><td><input id="password" type="password" name="password"></td></tr>
-    <tr><td class="icon"><img src="img/lbSQEXPass_mem.gif"></td><td><label for="repeatPassword">Repeat Password</label></td><td><input id="repeatPassword" type="password" name="repeatPassword"></td></tr>
-    <tr><td class="icon"><img src="img/lbMail.gif"></td><td><label for="email">E-mail Address</label></td><td><input id="email" type="text" name="email" maxlength="@Meteor.Web.Data.User.MaxEmailLength" value="@Model.Email"></td></tr>
-    </table>
-    <p class="errorText">@Model.Error</p>
-    <button type="submit" name="createUser">&nbsp;</button>
-    </form>
-    <p><a href="ffxivlogin">Back to login</a></p>
+	<form id="panel" method="post" autocomplete="off">
+		<img class="icon" src="img/lbSQEXId_mem.gif" style="top: 17px">
+		<label class="label" for="username" style="top: 21px">Username</label>
+		<input class="text" id="username" type="text" name="username" maxlength="@Meteor.Web.Data.User.MaxNameLength" value="@Model.Username" style="top: 21px">
+
+		<img class="icon" src="img/lbSQEXPass_mem.gif" style="top: 50px">
+		<label class="label" for="password" style="top: 54px">Password</label>
+		<input class="text" id="password" type="password" name="password" style="top: 54px">
+
+		<img class="icon" src="img/lbSQEXPass_mem.gif" style="top: 83px">
+		<label class="label" for="repeatPassword" style="top: 87px">Repeat Password</label>
+		<input class="text" id="repeatPassword" type="password" name="repeatPassword" style="top: 87px">
+
+		<img class="icon" src="img/lbMail.gif" style="top: 116px">
+		<label class="label" for="email" style="top: 120px">E-mail Address</label>
+		<input class="text" id="email" type="text" name="email" maxlength="@Meteor.Web.Data.User.MaxEmailLength" value="@Model.Email" style="top: 120px">
+
+		<div class="note">@Model.Error</div>
+		<button class="button" type="submit" name="createUser">Sign Up</button>
+		<div class="back"><a href="ffxivlogin">Back to login</a></div>
+	</form>
 }
+	<img id="banner" src="img/banner.png" width="750" height="100" alt="">
 </div>
 </body></html>

@@ -54,32 +54,40 @@ namespace Meteor.Web.Pages
         [BindProperty(Name = "password")]
         public string Password { get; set; }
 
+        [BindProperty(Name = "remember")]
+        public bool Remember { get; set; }
+
         public string Error { get; private set; }
+
+        public string Language { get; private set; }
+        public LoginText Text { get; private set; }
 
         // Set after a good login. The page then includes the <x-sqexauth> tag.
         public string SessionId { get; private set; }
-        public string Language { get; private set; }
         public long Utc { get; private set; }
 
         public void OnGet()
         {
+            PickLanguage();
             Username = Request.Cookies[RememberCookie];
+            Remember = true;
         }
 
         public void OnPost()
         {
+            PickLanguage();
             Username = Username?.Trim() ?? "";
             string password = Password?.Trim() ?? "";
             RememberUsername();
 
             if (Username.Length == 0)
             {
-                Error = "You must enter a username.";
+                Error = Text.NoUsername;
                 return;
             }
             if (password.Length == 0)
             {
-                Error = "You must enter a password.";
+                Error = Text.NoPassword;
                 return;
             }
 
@@ -89,7 +97,7 @@ namespace Meteor.Web.Pages
                 if (userId == 0)
                 {
                     Program.Log.Info("login: bad name or password for \"{0}\"", Username);
-                    Error = "Incorrect username or password.";
+                    Error = Text.BadLogin;
                     return;
                 }
                 SessionId = accounts.RefreshOrCreateSession(userId);
@@ -98,16 +106,28 @@ namespace Meteor.Web.Pages
             catch (Exception e) when (AccountService.IsDatabaseError(e))
             {
                 Program.Log.Error(e.ToString());
-                Error = "The server can't sign you in right now.";
+                Error = Text.ServerDown;
                 return;
             }
 
-            Language = LanguageFrom(Request.Headers.UserAgent.ToString());
             Utc = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        }
+
+        // ?lang= lets a normal browser preview the other languages.
+        void PickLanguage()
+        {
+            string query = Request.Query["lang"];
+            Language = Array.IndexOf(Languages, query) >= 0 ? query : LanguageFrom(Request.Headers.UserAgent.ToString());
+            Text = LoginText.For(Language);
         }
 
         void RememberUsername()
         {
+            if (!Remember)
+            {
+                Response.Cookies.Delete(RememberCookie, new CookieOptions { Path = "/account/content" });
+                return;
+            }
             if (Username.Length == 0)
                 return;
             Response.Cookies.Append(RememberCookie, Username, new CookieOptions

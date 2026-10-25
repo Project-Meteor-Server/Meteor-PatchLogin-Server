@@ -1,18 +1,21 @@
 @page "/account/content/ffxivlogin"
 @model LoginModel
-<html><head>
+@{ var t = Model.Text; }
+<html lang="@Model.Language.Substring(0, 2)"><head>
 <meta http-equiv="content-type" content="text/html; charset=utf-8">
+<partial name="_LoginStyle" />
 <style>
-html, body { font-family: Arial; font-size: 14px; margin: 0; padding: 0; width: 600px; }
-html { padding: 10px; }
-form { background-color: #eee; border: solid 1px #888; border-radius: 8px; margin-bottom: 0; }
-table { width: 100%; height: 100%; padding: 20px; }
-form input { width: 100%; height: 30px; box-sizing: border-box; border: solid 1px #888; border-radius: 8px; padding: 0 8px; background: #fff; font-size: 14px; outline: none; }
-form input:focus { border-color: #444; }
-form button { background-image: url(img/btLogin.gif); background-position: 0 0; background-repeat: no-repeat; border: none; width: 200px; height: 40px; }
-form button:hover { background-position: 0 -40px; cursor: pointer; }
-.errorText { color: red; margin: 2px 0; }
-.banner { margin-top: 10px; }
+#panel .remember, #panel .signup { position: absolute; }
+#panel .remember { left: 23px; top: 139px; height: 13px; line-height: 13px; white-space: nowrap;
+	font: 14px "Times New Roman", "Hiragino Mincho ProN", "MS PMincho", serif; color: #000; }
+/* The classic Windows sunken checkbox the retail page showed, not the platform's own. */
+#panel .remember input { -webkit-appearance: none; appearance: none; width: 13px; height: 13px; box-sizing: border-box;
+	margin: 0 2px 0 0; vertical-align: top; background: #fff no-repeat 0 0;
+	border: 1px solid; border-color: #a0a0a0 #fff #fff #a0a0a0; box-shadow: inset 1px 1px #696969, inset -1px -1px #e3e3e3; }
+#panel .remember input:checked { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' shape-rendering='crispEdges'%3E%3Cpath d='M8 2h1v1h-1zM7 3h2v1h-2zM2 4h1v1h-1zM6 4h3v1h-3zM2 5h2v1h-2zM5 5h3v1h-3zM2 6h5v1h-5zM3 7h3v1h-3zM4 8h1v1h-1z'/%3E%3C/svg%3E"); }
+#panel .signup { left: 0; top: 236px; width: 100%; text-align: center; }
+#panel .signup img { vertical-align: middle; margin-right: 8px; }
+#panel .signup a { color: #af5f01; font-size: 14px; vertical-align: middle; }
 </style>
 </head>
 <body>
@@ -20,29 +23,26 @@ form button:hover { background-position: 0 -40px; cursor: pointer; }
 {
     <x-sqexauth sid="@Model.SessionId" lang="@Model.Language" region="2" utc="@Model.Utc"></x-sqexauth>
 }
-<table border="0" cellpadding="0" cellspacing="0">
-<tr>
-	<td width="50%"><img src="img/logo.png" class="logo" width="300"></td>
-	<td width="50%">
-		<form method="post">
-		<table border="0" cellpadding="5" cellspacing="0">
-		<tr>
-			<td width="5%"><img src="img/lbSQEXId_mem.gif"></td>
-			<td width="40%"><label for="username">Username</label></td>
-			<td width="50%"><input id="username" name="username" autocomplete="off" type="text" value="@Model.Username"></td>
-		</tr>
-		<tr>
-			<td><img src="img/lbSQEXPass_mem.gif"></td>
-			<td><label for="password">Password</label></td>
-			<td><input id="password" name="password" autocomplete="off" type="password"></td>
-		</tr>
-		<tr><td colspan="3" align="center"><p class="errorText">@Model.Error</p></td></tr>
-		<tr><td colspan="3" align="center"><button type="submit" name="login">&nbsp;</button></td></tr>
-		<tr><td colspan="3" align="center"><a href="signup">Don't have an account?</a></td></tr>
-		</table>
-		</form>
-	</td>
-</tr>
-<tr><td colspan="2" align="center"><img src="img/banner.png" class="banner" width="720"></td></tr>
-</table>
+<div id="page">
+	<img id="logo" src="img/logo.png" width="325" height="175" alt="FINAL FANTASY XIV">
+	<form id="panel" method="post" autocomplete="off">
+		<img class="icon" src="img/lbSQEXId_mem.gif" style="top: 17px">
+		<label class="label" for="username" style="top: 21px">@t.Username</label>
+		<input class="text" id="username" name="username" type="text" value="@Model.Username" style="top: 21px">
+
+		<img class="icon" src="img/lbSQEXPass_mem.gif" style="top: 50px">
+		<label class="label" for="password" style="top: 54px">@t.Password</label>
+		<input class="text" id="password" name="password" type="password" style="top: 54px">
+
+		<img class="icon" src="img/lbOneTime.png" style="top: 82px">
+		<span class="label" style="top: 86px">@t.OneTimePassword</span>
+		<input class="text" type="text" disabled style="top: 86px">
+
+		<div class="note">@Model.Error</div>
+		<label class="remember"><input type="checkbox" name="remember" value="true" @(Model.Remember ? "checked" : "")>@t.Remember</label>
+		<button class="button" type="submit" name="login">@t.LogIn</button>
+		<div class="signup"><img src="img/lbSignup.png" width="27" height="26"><a href="signup">@t.NoAccount</a></div>
+	</form>
+	<img id="banner" src="img/banner.png" width="750" height="100" alt="">
+</div>
 </body></html>
