@@ -31,6 +31,8 @@ static int     g_hostCount;
 static BOOL    g_log;
 static wchar_t g_logPath[MAX_PATH];
 static HMODULE g_self;
+static wchar_t g_ini[MAX_PATH];
+static wchar_t g_dir[MAX_PATH];
 static HMODULE g_ws2;
 static CRITICAL_SECTION g_logLock;
 
@@ -557,6 +559,66 @@ static void HookBootResources(void)
 }
 
 // ---------------------------------------------------------------------------------------------
+// Plugins (ffxivgame only)
+//
+// [Plugins] load=a.dll,b.dll loads each DLL from this folder into the game and calls its export
+// plugin_start(ini path). It runs on a thread of its own, after the loader lock is released, since
+// loading a DLL from inside DllMain can deadlock. Unset, nothing is loaded.
+
+typedef void (__cdecl *PluginStart_t)(const wchar_t* ini);
+
+static BOOL IsGameProcess(void)
+{
+    wchar_t exe[MAX_PATH];
+    DWORD len = GetModuleFileNameW(NULL, exe, MAX_PATH);
+    if (len == 0 || len >= MAX_PATH)
+        return FALSE;
+    const wchar_t* name = exe + len;
+    while (name > exe && name[-1] != L'\\' && name[-1] != L'/')
+        name--;
+    return CompareStringW(LOCALE_INVARIANT, NORM_IGNORECASE, name, -1, L"ffxivgame.exe", -1) == CSTR_EQUAL;
+}
+
+static DWORD WINAPI LoadPlugins(LPVOID unused)
+{
+    (void)unused;
+    wchar_t list[1024];
+    GetPrivateProfileStringW(L"Plugins", L"load", L"", list, 1024, g_ini);
+    wchar_t* p = list;
+    while (*p != 0)
+    {
+        while (*p == L',' || *p == L' ')
+            p++;
+        wchar_t* name = p;
+        while (*p != 0 && *p != L',')
+            p++;
+        if (*p == L',')
+            *p++ = 0;
+        int end = lstrlenW(name);
+        while (end > 0 && name[end - 1] == L' ')
+            name[--end] = 0;
+        if (*name == 0 || lstrlenW(g_dir) + end >= MAX_PATH)
+            continue;
+
+        wchar_t path[MAX_PATH];
+        lstrcpyW(path, g_dir);
+        lstrcatW(path, name);
+        char nameA[MAX_PATH];
+        WideCharToMultiByte(CP_ACP, 0, name, -1, nameA, sizeof(nameA), NULL, NULL);
+        HMODULE plugin = LoadLibraryW(path);
+        PluginStart_t start = plugin != NULL ? (PluginStart_t)GetProcAddress(plugin, "plugin_start") : NULL;
+        if (start == NULL)
+        {
+            Log("plugin %s: %s", nameA, plugin == NULL ? "can't load" : "no plugin_start export");
+            continue;
+        }
+        Log("plugin %s: starting", nameA);
+        start(g_ini);
+    }
+    return 0;
+}
+
+// ---------------------------------------------------------------------------------------------
 // Configuration
 
 static void ReadConfig(HINSTANCE self)
@@ -572,6 +634,8 @@ static void ReadConfig(HINSTANCE self)
     wchar_t ini[MAX_PATH];
     lstrcpyW(ini, dir);
     lstrcatW(ini, L"iphlpapi.ini");
+    lstrcpyW(g_ini, ini);
+    lstrcpyW(g_dir, dir);
     lstrcpyW(g_logPath, dir);
     lstrcatW(g_logPath, L"iphlpapi.log");
 
@@ -641,6 +705,14 @@ void Redirect_Start(HINSTANCE self)
     // Windows has already linked boot's imports before this runs, so we can hook them now.
     if (g_certPath[0] != 0 && (!g_certDownload || g_server[0] != 0) && IsBootProcess())
         HookBootResources();
+
+    wchar_t plugins[8];
+    if (GetPrivateProfileStringW(L"Plugins", L"load", L"", plugins, 8, g_ini) > 0 && IsGameProcess())
+    {
+        HANDLE thread = CreateThread(NULL, 0, LoadPlugins, NULL, 0, NULL);
+        if (thread != NULL)
+            CloseHandle(thread);
+    }
 
     if (g_server[0] == 0)
         return;     // nothing to redirect: plain pass-through

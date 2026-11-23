@@ -68,6 +68,14 @@ cmake --build build
   `python gen_exports.py exports.h C:\Windows\SysWOW64\iphlpapi.dll` (inputs are merged, so
   the list only grows).
 
+## Plugins
+
+`[Plugins] load=` lists DLLs in the same folder to load into `ffxivgame.exe` (only there). Each must
+export `void plugin_start(const wchar_t* iniPath)`; it gets the path of `iphlpapi.ini` to read its
+own settings. The DLL loads on a thread of its own after Windows has finished loading the game's
+imports. With `load=` empty, nothing is loaded. The client test plugin, `xivtest.dll`, is built from
+[Meteor-Client-Driver](https://github.com/Project-Meteor-Server/Meteor-Client-Driver) and reads `[Test]`.
+
 ## Troubleshooting
 
 Set `log=1` in `iphlpapi.ini`. `iphlpapi.log` then shows which processes loaded the DLL, each
