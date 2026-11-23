@@ -18,8 +18,9 @@ normally, and nothing outside the game's processes changes.
 
 ## Install
 
-Copy `iphlpapi.dll` and `iphlpapi.ini` next to `ffxivboot.exe`, set `server=` to the Meteor
-server's address, and start `ffxivboot.exe`.
+Download `iphlpapi.dll` and `iphlpapi.ini` from the latest `retailredirect-v*` release on this
+repository's Releases page, or build them (below). Copy both next to `ffxivboot.exe`, set
+`server=` to the Meteor server's address, and start `ffxivboot.exe`.
 
 For patch downloads, boot must accept the server's patch signatures. With `cert=` left empty under
 `[Boot]`, the DLL downloads the server's certificate from `http://<server>:54996/patch/cert`

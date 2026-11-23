@@ -1,0 +1,41 @@
+name: RetailRedirect
+
+# Builds the 32-bit iphlpapi.dll on every change to Tools/RetailRedirect. A tag like
+# retailredirect-v1.2.0 also publishes a release with the DLL and its iphlpapi.ini attached.
+on:
+  push:
+    branches: [main]
+    paths: ["Tools/RetailRedirect/**", ".github/workflows/retailredirect.yml"]
+    tags: ["retailredirect-v*"]
+  pull_request:
+    paths: ["Tools/RetailRedirect/**", ".github/workflows/retailredirect.yml"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-2022
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S Tools/RetailRedirect -B build -A Win32
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RetailRedirect
+          path: |
+            build/Release/iphlpapi.dll
+            Tools/RetailRedirect/iphlpapi.ini
+          if-no-files-found: error
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/retailredirect-v')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" build/Release/iphlpapi.dll Tools/RetailRedirect/iphlpapi.ini --title "RetailRedirect ${GITHUB_REF_NAME#retailredirect-}" --generate-notes
